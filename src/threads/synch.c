@@ -61,7 +61,6 @@ void
 sema_down (struct semaphore *sema) 
 {
   enum intr_level old_level;
-
   ASSERT (sema != NULL);
   ASSERT (!intr_context ());
 
@@ -85,7 +84,6 @@ sema_try_down (struct semaphore *sema)
 {
   enum intr_level old_level;
   bool success;
-
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();

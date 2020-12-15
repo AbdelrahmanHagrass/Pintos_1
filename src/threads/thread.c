@@ -4,6 +4,8 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include "threads/fixed-point.h"
+#include "threads/init.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -317,7 +319,11 @@ void thread_foreach(thread_action_func *func, void *aux)
 void thread_set_priority(int new_priority)
 {
   if (thread_mlfqs)
-    return;
+  {
+    thread_current()->priority = new_priority;
+    thread_TestAndPreempt();
+    return ;
+  }
   enum intr_level old_level = intr_disable();
   struct thread *curr = thread_current();
   int old_priority = curr->priority; //my Donation priority
@@ -394,12 +400,31 @@ int thread_get_priority(void)
   return thread_current()->priority;
 }
 
+// modify priorities for all threads , called every 4 ticks
+void modify_priorities(void)
+{
+  // priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
+  if (thread_mlfqs)
+  {
+    struct list_elem *e;
+    for (e = list_begin(&all_list); e != list_end(&all_list);
+         e = list_next(e))
+    {
+      struct thread *t = list_entry(e, struct thread, allelem);
+      int priority = PRI_MAX - (t->recent_cpu / 4) - (t->nice * 2);
+      t->priority = priority;
+    }
+  }
+}
+
 /* Sets the current thread's nice value to NICE. */
 void thread_set_nice(int nice UNUSED)
 {
   thread_current()->nice = nice;
-  // mfrod ncalculate b3d el set nice el priority mn tany
-  /* Not yet implemented. */
+  // calculate new priority
+  // priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
+  int priority = PRI_MAX - (thread_current()->recent_cpu / 4) - (thread_get_nice() * 2);
+  thread_set_priority(priority);
 }
 
 /* Returns the current thread's nice value. */
@@ -408,18 +433,58 @@ int thread_get_nice(void)
   return thread_current()->nice;
 }
 
+void modify_load_avg(void)
+{
+  if (thread_mlfqs)
+  {
+    int size = list_size(&ready_list);
+    struct real num1 = int_to_real(59);
+    struct real num2 = int_to_real(60);
+    struct real num3 = int_to_real(1);
+    struct real div1 = div_real_real(num1, num2);
+    struct real div2 = div_real_real(num3, num2);
+    struct real result1 = mul_real_int(div1, load_avg);
+    struct real result2 = mul_real_int(div2, size);
+    struct real result;
+    result.val = result1.val + result2.val;
+    load_avg = real_round(result);
+  }
+}
+
 /* Returns 100 times the system load average. */
 int thread_get_load_avg(void)
 {
-  /* Not yet implemented. */
-  return 0;
+  return 100 * load_avg;
+}
+
+void modify_recent_cpu(void)
+{ //recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice
+  if (thread_mlfqs)
+  {
+    int prevRecent = thread_current()->recent_cpu;
+    int num1 = 2 * load_avg;
+    int num2 = 2 * load_avg + 1;
+    struct real x = int_to_real(num1);
+    struct real y = int_to_real(num2);
+    struct real leftCoef = div_real_real(x, y);
+    struct list_elem *e;
+    for (e = list_begin(&all_list); e != list_end(&all_list);
+         e = list_next(e))
+    {
+      struct thread *t = list_entry(e, struct thread, allelem);
+      int recent_cpu = t->recent_cpu;
+      struct real leftEquation = mul_real_int(leftCoef, recent_cpu);
+      int leftnum = real_round(leftEquation);
+      t->recent_cpu = leftnum + t->nice;
+    }
+    thread_current()->recent_cpu = prevRecent + 1;
+  }
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int thread_get_recent_cpu(void)
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current()->recent_cpu * 100;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -509,6 +574,8 @@ init_thread(struct thread *t, const char *name, int priority)
   strlcpy(t->name, name, sizeof t->name);
   t->stack = (uint8_t *)t + PGSIZE;
   t->priority = priority;
+  t->recent_cpu = 0;
+  t->nice = 0;
   t->magic = THREAD_MAGIC;
   list_init(&t->locks);
   old_level = intr_disable();

@@ -1,0 +1,3 @@
+/home/nour/vm/Pintos/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/nour/vm/Pintos/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/nour/vm/Pintos/cmake-build-debug/CMakeFiles/Pintos.dir

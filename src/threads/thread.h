@@ -84,6 +84,7 @@ struct thread
    int priority;              /* My Priority. right now */
    int base_priority;         /*My Original Priority*/
    int nice;                  // this variable is included in calculating priority in mlfqs
+   int recent_cpu;            // this variable is included in calculation priority in mlfqs
    struct list_elem allelem;  /* List element for all threads list. */
    struct list locks;         /*locks held by the thread*/
    struct lock *Waiting_lock; /*i am waiting for that lock*/
@@ -122,6 +123,10 @@ const char *thread_name(void);
 
 void thread_exit(void) NO_RETURN;
 void thread_yield(void);
+
+void modify_load_avg(void);
+void modify_priorities(void);
+void modify_recent_cpu(void);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func(struct thread *t, void *aux);
