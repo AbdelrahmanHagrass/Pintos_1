@@ -486,7 +486,6 @@ int thread_get_recent_cpu(void)
 {
   return thread_current()->recent_cpu * 100;
 }
-
 /* Idle thread.  Executes when no other thread is ready to run.
    The idle thread is initially put on the ready list by
    thread_start().  It will be scheduled once initially, at which
