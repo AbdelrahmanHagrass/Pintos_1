@@ -174,7 +174,6 @@ tid_t thread_create(const char *name, int priority,
   /* Initialize thread. */
   init_thread(t, name, priority);
   tid = t->tid = allocate_tid();
-
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame(t, sizeof *kf);
   kf->eip = NULL;
@@ -252,6 +251,7 @@ thread_current(void)
      recursion can cause stack overflow. */
   ASSERT(is_thread(t));
   ASSERT(t->status == THREAD_RUNNING);
+  
 
   return t;
 }
@@ -577,7 +577,7 @@ init_thread(struct thread *t, const char *name, int priority)
   t->recent_cpu = 0;
   t->nice = 0;
   t->magic = THREAD_MAGIC;
-
+  list_init(&t->locks);
   old_level = intr_disable();
   list_push_back(&all_list, &t->allelem);
   intr_set_level(old_level);
