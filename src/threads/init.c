@@ -89,7 +89,7 @@ main (void)
      then enable console locking. */
   thread_init ();
   console_init ();  
-
+  load_avg=0;
   /* Greet user. */
   printf ("Pintos booting with %'"PRIu32" kB RAM...\n",
           init_ram_pages * PGSIZE / 1024);

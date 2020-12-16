@@ -183,6 +183,17 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  if(timer_ticks()%TIMER_FREQ==0){
+    // modify load_avg
+    modify_load_avg();
+    // modify recent_cpu
+    modify_recent_cpu();
+  }
+  if(timer_ticks()%4==0){
+    // modify priorities of all threads every 4 ticks
+    modify_priorities();
+  }
+  
   struct list_elem *el;
   struct thread *th;
   while(!list_empty(&sleeping_List))
