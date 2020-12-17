@@ -86,11 +86,9 @@ static tid_t allocate_tid(void);
 void thread_init(void)
 {
   ASSERT(intr_get_level() == INTR_OFF);
-
   lock_init(&tid_lock);
   list_init(&ready_list);
   list_init(&all_list);
-
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread();
   init_thread(initial_thread, "main", PRI_DEFAULT);
@@ -191,7 +189,7 @@ tid_t thread_create(const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock(t);
-
+  thread_TestAndPreempt();
   return tid;
 }
 
@@ -577,6 +575,8 @@ init_thread(struct thread *t, const char *name, int priority)
   t->nice = 0;
   t->magic = THREAD_MAGIC;
   list_init(&t->locks);
+  //lock_init(&t->Waiting_lock);
+  t->Waiting_lock = NULL;
   old_level = intr_disable();
   list_push_back(&all_list, &t->allelem);
   intr_set_level(old_level);
@@ -692,7 +692,11 @@ bool thread_wakeupTimeComp(const struct list_elem *a,
 {
   struct thread *pta = list_entry(a, struct thread, elem);
   struct thread *ptb = list_entry(b, struct thread, elem);
-  return pta->wakeupTime < ptb->wakeupTime;
+  bool result = pta->wakeupTime < ptb->wakeupTime;
+  if(result == 0 ){
+    result = pta->priority > ptb->priority;
+  }
+  return result ;
 }
 bool thread_PriorityComp(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {

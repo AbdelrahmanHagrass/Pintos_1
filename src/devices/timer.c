@@ -196,12 +196,13 @@ timer_interrupt (struct intr_frame *args UNUSED)
   
   struct list_elem *el;
   struct thread *th;
+   
   while(!list_empty(&sleeping_List))
   {
     el=list_front(&sleeping_List);
     th=list_entry(el,struct thread,elem);
     if(th->wakeupTime>ticks)
-    {
+    { 
       break;
     }
     list_remove(el);
