@@ -222,7 +222,7 @@ void thread_unblock(struct thread *t)
 
   old_level = intr_disable();
   ASSERT(t->status == THREAD_BLOCKED);
-  list_push_back(&ready_list, &t->elem);
+  list_insert_ordered(&ready_list,&t->elem,thread_PriorityComp,NULL);
   t->status = THREAD_READY;
   intr_set_level(old_level);
 }
@@ -241,7 +241,6 @@ struct thread *
 thread_current(void)
 {
   struct thread *t = running_thread();
-
   /* Make sure T is really a thread.
      If either of these assertions fire, then your thread may
      have overflowed its stack.  Each thread has less than 4 kB
@@ -324,10 +323,12 @@ void thread_set_priority(int new_priority)
   }
   enum intr_level old_level = intr_disable();
   struct thread *curr = thread_current();
+  
   int old_priority = curr->priority; //my Donation priority
   /*the function changes the original priority of the thread not used in donation*/
   curr->base_priority = new_priority;
-
+  curr->priority=new_priority;
+  thread_TestAndPreempt();
   /*Pintos single-processor-system so check for preemption 
   if there is a higher priority than me then preempt*/
 
@@ -350,7 +351,11 @@ void thread_TestAndPreempt()
   enum intr_level old_level = intr_disable();
   if (!list_empty(&ready_list) && thread_current()->priority <
                                       list_entry(list_front(&ready_list), struct thread, elem)->priority)
-    thread_yield();
+    
+     { 
+       thread_yield();
+     }
+    
   intr_set_level(old_level);
 }
 void thread_hold_lock(struct lock *lock)
@@ -372,6 +377,20 @@ void thread_release_lock(struct lock *lock)
   list_remove(&lock->elem);
   thread_update_priority(curr);
   intr_set_level(old_level);
+}
+/* Donate current thread's priority to another thread. */
+void thread_donate_priority (struct thread *t)
+{
+  enum intr_level old_level = intr_disable ();
+  thread_update_priority (t);
+  /* If thread is in ready list, reorder it. */
+  if (t->status == THREAD_READY)
+    {
+      list_remove (&t->elem);
+      list_insert_ordered (&ready_list, &t->elem,
+                           thread_PriorityComp, NULL);
+    }
+  intr_set_level (old_level);
 }
 /*updating donated thread priority  conti in synch.c*/
 /*no preemption as we can update thread in ready queue*/
@@ -552,6 +571,7 @@ running_thread(void)
 static bool
 is_thread(struct thread *t)
 {
+  
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 
@@ -570,12 +590,12 @@ init_thread(struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy(t->name, name, sizeof t->name);
   t->stack = (uint8_t *)t + PGSIZE;
+  t->base_priority=priority;
   t->priority = priority;
   t->recent_cpu = 0;
   t->nice = 0;
   t->magic = THREAD_MAGIC;
   list_init(&t->locks);
-  //lock_init(&t->Waiting_lock);
   t->Waiting_lock = NULL;
   old_level = intr_disable();
   list_push_back(&all_list, &t->allelem);
@@ -587,6 +607,7 @@ init_thread(struct thread *t, const char *name, int priority)
 static void *
 alloc_frame(struct thread *t, size_t size)
 {
+  
   /* Stack data is always allocated in word-size units. */
   ASSERT(is_thread(t));
   ASSERT(size % sizeof(uint32_t) == 0);
