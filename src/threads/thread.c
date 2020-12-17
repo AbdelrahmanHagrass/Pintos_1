@@ -327,8 +327,6 @@ void thread_set_priority(int new_priority)
   int old_priority = curr->priority; //my Donation priority
   /*the function changes the original priority of the thread not used in donation*/
   curr->base_priority = new_priority;
-  curr->priority=new_priority;
-  thread_TestAndPreempt();
   /*Pintos single-processor-system so check for preemption 
   if there is a higher priority than me then preempt*/
 
@@ -374,6 +372,7 @@ void thread_release_lock(struct lock *lock)
 {
   enum intr_level old_level = intr_disable();
   struct thread *curr = thread_current();
+  if(!list_empty(&thread_current()->locks))
   list_remove(&lock->elem);
   thread_update_priority(curr);
   intr_set_level(old_level);
@@ -401,6 +400,7 @@ void thread_update_priority(struct thread *thread)
   if (!list_empty(&thread->locks))
   {
 
+    list_sort (&thread->locks, lock_PriortyComp, NULL);
     struct list_elem *el = list_front(&thread->locks);
     int lock_priority = list_entry(el, struct lock, elem)->MAX_Priority;
     if (lock_priority > max_priority)
