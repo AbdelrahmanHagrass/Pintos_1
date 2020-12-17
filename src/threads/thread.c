@@ -372,7 +372,7 @@ void thread_release_lock(struct lock *lock)
 {
   enum intr_level old_level = intr_disable();
   struct thread *curr = thread_current();
-  if(!list_empty(&thread_current()->locks))
+  if(!list_empty(&curr->locks))
   list_remove(&lock->elem);
   thread_update_priority(curr);
   intr_set_level(old_level);

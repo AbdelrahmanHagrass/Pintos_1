@@ -363,11 +363,6 @@ bool cond_sema_PriorityCmp(const struct list_elem *a,const struct list_elem *b,v
 {
   struct semaphore_elem *sa = list_entry (a, struct semaphore_elem, elem);
   struct semaphore_elem *sb = list_entry (b, struct semaphore_elem, elem);
-//  if(list_empty(&sa->semaphore.waiters)||list_empty(&sb->semaphore.waiters))
-//  {
-//    return 0;
-//  }
-
  struct thread *ta= list_entry(list_front(&sa->semaphore.waiters),
                   struct thread, elem);
   struct thread *tb= list_entry(list_front(&sb->semaphore.waiters),
