@@ -469,6 +469,7 @@ void modify_load_avg(bool isSleeping)
     struct real result;
     result.val = result1.val + result2.val;
     load_avg = result.val;
+    printf("%d \n",result.val);
   }
 }
 
@@ -495,6 +496,7 @@ void modify_recent_cpu(bool currentOnly, bool isSleeping)
       return;
     }
     thread_current()->recent_cpu = thread_current()->recent_cpu + 1;
+
     struct real load;
     load.val = load_avg;
     struct real num1 = mul_real_int(load, 2);

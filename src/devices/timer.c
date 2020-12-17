@@ -185,6 +185,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+   enum intr_level old_level = intr_disable();
   if(timer_ticks()%TIMER_FREQ==0){
     // modify load_avg
     modify_load_avg(isSleeping);
@@ -197,6 +198,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     // modify priorities of all threads every 4 ticks
     modify_priorities();
   }
+  intr_set_level(old_level);
   
   struct list_elem *el;
   struct thread *th;
