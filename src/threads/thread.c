@@ -222,7 +222,7 @@ void thread_unblock(struct thread *t)
 
   old_level = intr_disable();
   ASSERT(t->status == THREAD_BLOCKED);
-  list_insert_ordered(&ready_list,&t->elem,thread_PriorityComp,NULL);
+  list_insert_ordered(&ready_list, &t->elem, thread_PriorityComp, NULL);
   t->status = THREAD_READY;
   intr_set_level(old_level);
 }
@@ -248,7 +248,6 @@ thread_current(void)
      recursion can cause stack overflow. */
   ASSERT(is_thread(t));
   ASSERT(t->status == THREAD_RUNNING);
-  
 
   return t;
 }
@@ -319,11 +318,11 @@ void thread_set_priority(int new_priority)
   {
     thread_current()->priority = new_priority;
     thread_TestAndPreempt();
-    return ;
+    return;
   }
   enum intr_level old_level = intr_disable();
   struct thread *curr = thread_current();
-  
+
   int old_priority = curr->priority; //my Donation priority
   /*the function changes the original priority of the thread not used in donation*/
   curr->base_priority = new_priority;
@@ -347,12 +346,12 @@ void thread_set_priority(int new_priority)
 void thread_TestAndPreempt()
 {
   enum intr_level old_level = intr_disable();
-  if (!list_empty(&ready_list) && thread_current()->priority <list_entry(list_front(&ready_list), struct thread, elem)->priority)
-    
-     { 
-       thread_yield();
-     }
-    
+  if (!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority)
+
+  {
+    thread_yield();
+  }
+
   intr_set_level(old_level);
 }
 void thread_hold_lock(struct lock *lock)
@@ -371,24 +370,24 @@ void thread_release_lock(struct lock *lock)
 {
   enum intr_level old_level = intr_disable();
   struct thread *curr = thread_current();
-  if(!list_empty(&curr->locks))
-  list_remove(&lock->elem);
+  if (!list_empty(&curr->locks))
+    list_remove(&lock->elem);
   thread_update_priority(curr);
   intr_set_level(old_level);
 }
 /* Donate current thread's priority to another thread. */
-void thread_donate_priority (struct thread *t)
+void thread_donate_priority(struct thread *t)
 {
-  enum intr_level old_level = intr_disable ();
-  thread_update_priority (t);
+  enum intr_level old_level = intr_disable();
+  thread_update_priority(t);
   /* If thread is in ready list, reorder it. */
   if (t->status == THREAD_READY)
-    {
-      list_remove (&t->elem);
-      list_insert_ordered (&ready_list, &t->elem,
-                           thread_PriorityComp, NULL);
-    }
-  intr_set_level (old_level);
+  {
+    list_remove(&t->elem);
+    list_insert_ordered(&ready_list, &t->elem,
+                        thread_PriorityComp, NULL);
+  }
+  intr_set_level(old_level);
 }
 /*updating donated thread priority  conti in synch.c*/
 /*no preemption as we can update thread in ready queue*/
@@ -399,7 +398,7 @@ void thread_update_priority(struct thread *thread)
   if (!list_empty(&thread->locks))
   {
 
-    list_sort (&thread->locks, lock_PriortyComp, NULL);
+    list_sort(&thread->locks, lock_PriortyComp, NULL);
     struct list_elem *el = list_front(&thread->locks);
     int lock_priority = list_entry(el, struct lock, elem)->MAX_Priority;
     if (lock_priority > max_priority)
@@ -449,40 +448,61 @@ int thread_get_nice(void)
   return thread_current()->nice;
 }
 
-void modify_load_avg(void)
+void modify_load_avg(bool isSleeping)
 {
   if (thread_mlfqs)
   {
     int size = list_size(&ready_list);
+    if (!isSleeping)
+    {
+      size = size + 1;
+    }
     struct real num1 = int_to_real(59);
     struct real num2 = int_to_real(60);
     struct real num3 = int_to_real(1);
     struct real div1 = div_real_real(num1, num2);
     struct real div2 = div_real_real(num3, num2);
-    struct real result1 = mul_real_int(div1, load_avg);
+    struct real load;
+    load.val = load_avg;
+    struct real result1 = mul_real_real(div1, load);
     struct real result2 = mul_real_int(div2, size);
     struct real result;
     result.val = result1.val + result2.val;
-    load_avg = real_round(result);
+    load_avg = result.val;
   }
 }
 
 /* Returns 100 times the system load average. */
 int thread_get_load_avg(void)
 {
-  return 100 * load_avg;
+  struct real load;
+  load.val = load_avg;
+  return 100 * real_round(load);
 }
 
-void modify_recent_cpu(void)
+void modify_recent_cpu(bool currentOnly, bool isSleeping)
 { //recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice
   if (thread_mlfqs)
   {
+    if (isSleeping)
+    {
+      return;
+    }
     int prevRecent = thread_current()->recent_cpu;
-    int num1 = 2 * load_avg;
-    int num2 = 2 * load_avg + 1;
-    struct real x = int_to_real(num1);
-    struct real y = int_to_real(num2);
-    struct real leftCoef = div_real_real(x, y);
+    if (currentOnly)
+    {
+      thread_current()->recent_cpu = thread_current()->recent_cpu + 1;
+      return;
+    }
+    thread_current()->recent_cpu = thread_current()->recent_cpu + 1;
+    struct real load;
+    load.val = load_avg;
+    struct real num1 = mul_real_int(load, 2);
+    struct real num2 = mul_real_int(load, 2);
+    num2 = add_real_int(num2, 1);
+    // struct real x = int_to_real(num1);
+    // struct real y = int_to_real(num2);
+    struct real leftCoef = div_real_real(num1, num2);
     struct list_elem *e;
     for (e = list_begin(&all_list); e != list_end(&all_list);
          e = list_next(e))
@@ -492,8 +512,8 @@ void modify_recent_cpu(void)
       struct real leftEquation = mul_real_int(leftCoef, recent_cpu);
       int leftnum = real_round(leftEquation);
       t->recent_cpu = leftnum + t->nice;
+      // printf("%d \n",leftEquation.val);
     }
-    thread_current()->recent_cpu = prevRecent + 1;
   }
 }
 
@@ -570,7 +590,7 @@ running_thread(void)
 static bool
 is_thread(struct thread *t)
 {
-  
+
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 
@@ -589,7 +609,7 @@ init_thread(struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy(t->name, name, sizeof t->name);
   t->stack = (uint8_t *)t + PGSIZE;
-  t->base_priority=priority;
+  t->base_priority = priority;
   t->priority = priority;
   t->recent_cpu = 0;
   t->nice = 0;
@@ -606,7 +626,7 @@ init_thread(struct thread *t, const char *name, int priority)
 static void *
 alloc_frame(struct thread *t, size_t size)
 {
-  
+
   /* Stack data is always allocated in word-size units. */
   ASSERT(is_thread(t));
   ASSERT(size % sizeof(uint32_t) == 0);
@@ -713,10 +733,11 @@ bool thread_wakeupTimeComp(const struct list_elem *a,
   struct thread *pta = list_entry(a, struct thread, elem);
   struct thread *ptb = list_entry(b, struct thread, elem);
   bool result = pta->wakeupTime < ptb->wakeupTime;
-  if(result == 0 ){
+  if (result == 0)
+  {
     result = pta->priority > ptb->priority;
   }
-  return result ;
+  return result;
 }
 bool thread_PriorityComp(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {

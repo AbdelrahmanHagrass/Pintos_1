@@ -124,9 +124,9 @@ const char *thread_name(void);
 void thread_exit(void) NO_RETURN;
 void thread_yield(void);
 
-void modify_load_avg(void);
+void modify_load_avg(bool isSleeping);
 void modify_priorities(void);
-void modify_recent_cpu(void);
+void modify_recent_cpu(bool currentOnly,bool isSleeping);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func(struct thread *t, void *aux);

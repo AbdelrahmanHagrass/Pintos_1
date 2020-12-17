@@ -4,8 +4,9 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include "devices/timer.h"
 
-#define SHIFT 14 // 2^14 = 16384
+#define SHIFT 10 // 2^14 = 16384
 
 //convert integer n to fixed point
 struct real int_to_real(int n)
@@ -27,7 +28,7 @@ int real_truncate(struct real x)
 int real_round(struct real x)
 {
     int num = x.val;
-    num = num + 8192;
+    num = num + 512;
     int result = num >> SHIFT;
     return result;
 }
@@ -89,9 +90,11 @@ struct real mul_real_int(struct real x, int n)
 // returns real x /real y
 struct real div_real_real(struct real x, struct real y)
 {
-    struct real result;
-    struct real num1 = int_to_real(x.val);
-    result.val = num1.val / y.val;
+       struct real result ;
+       result.val =(x.val<<SHIFT )/ y.val;
+    // struct real result;
+    // struct real num1 = int_to_real(x.val);
+    // result.val = num1.val / y.val;
     return result;
 }
 

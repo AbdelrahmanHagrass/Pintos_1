@@ -30,6 +30,7 @@ static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
+bool isSleeping;
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
@@ -96,13 +97,14 @@ timer_sleep (int64_t ticks)
   return;
 
   int64_t start = timer_ticks ();
-
+  isSleeping=true;
   ASSERT (intr_get_level () == INTR_ON);
   enum intr_level old_level=intr_disable();
   struct thread * current_thread=thread_current();
   current_thread->wakeupTime=ticks+start;
   list_insert_ordered(&sleeping_List,&current_thread->elem,thread_wakeupTimeComp,NULL);
   thread_block();
+  isSleeping=false;
   intr_set_level(old_level);
   /*
   while (timer_elapsed (start) < ticks) 
@@ -185,9 +187,11 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   if(timer_ticks()%TIMER_FREQ==0){
     // modify load_avg
-    modify_load_avg();
+    modify_load_avg(isSleeping);
     // modify recent_cpu
-    modify_recent_cpu();
+    modify_recent_cpu(false,isSleeping);
+  }else{
+    modify_recent_cpu(true,isSleeping);
   }
   if(timer_ticks()%4==0){
     // modify priorities of all threads every 4 ticks
