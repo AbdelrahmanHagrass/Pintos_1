@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "devices/timer.h"
-
+// ana hna ana hna
 #define SHIFT 10 // 2^14 = 16384
 
 //convert integer n to fixed point
