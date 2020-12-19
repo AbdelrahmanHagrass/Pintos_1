@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <threads/fixed-point.h>
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -84,7 +85,9 @@ struct thread
    int priority;              /* My Priority. right now */
    int base_priority;         /*My Original Priority*/
    int nice;                  // this variable is included in calculating priority in mlfqs
-   int recent_cpu;            // this variable is included in calculation priority in mlfqs
+  // int recent_cpu;            // this variable is included in calculation priority in mlfqs
+   struct real recent_cpu;
+
    struct list_elem allelem;  /* List element for all threads list. */
    struct list locks;         /*locks held by the thread*/
    struct lock *Waiting_lock; /*i am waiting for that lock*/

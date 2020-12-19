@@ -4,7 +4,7 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
-#include "threads/fixed-point.h"
+//#include "threads/fixed-point.h"
 #include "threads/init.h"
 #include "threads/flags.h"
 #include "threads/interrupt.h"
@@ -426,7 +426,8 @@ void modify_priorities(void)
          e = list_next(e))
     {
       struct thread *t = list_entry(e, struct thread, allelem);
-      int priority = PRI_MAX - (t->recent_cpu / 4) - (t->nice * 2);
+      //int priority = PRI_MAX - (t->recent_cpu / 4) - (t->nice * 2);
+      int priority = PRI_MAX - (real_round(t->recent_cpu )/ 4) - (t->nice * 2);
       t->priority = priority;
     }
   }
@@ -438,7 +439,8 @@ void thread_set_nice(int nice UNUSED)
   thread_current()->nice = nice;
   // calculate new priority
   // priority = PRI_MAX - (recent_cpu / 4) - (nice * 2)
-  int priority = PRI_MAX - (thread_current()->recent_cpu / 4) - (thread_get_nice() * 2);
+  //int priority = PRI_MAX - (thread_current()->recent_cpu / 4) - (thread_get_nice() * 2);
+  int priority = PRI_MAX - (real_round(thread_current()->recent_cpu) / 4) - (thread_get_nice() * 2);
   thread_set_priority(priority);
 }
 
@@ -490,14 +492,14 @@ void modify_recent_cpu(bool currentOnly, bool isSleeping)
     // {
     //   return;
     // }
-    int prevRecent = thread_current()->recent_cpu;
+    //int prevRecent = thread_current()->recent_cpu;
     if (currentOnly && thread_current() != idle_thread)
     {
-      //thread_current()->recent_cpu = add_real_int(thread_current()->recent_cpu);
-      thread_current()->recent_cpu = thread_current()->recent_cpu + 1;
+      thread_current()->recent_cpu = add_real_int(thread_current()->recent_cpu,1);
+      //thread_current()->recent_cpu = thread_current()->recent_cpu + 1;
       return;
     }
-    thread_current()->recent_cpu = thread_current()->recent_cpu + 1;
+    //thread_current()->recent_cpu = thread_current()->recent_cpu + 1;
 
     struct real load;
     load.val = load_avg;
@@ -512,10 +514,19 @@ void modify_recent_cpu(bool currentOnly, bool isSleeping)
          e = list_next(e))
     {
       struct thread *t = list_entry(e, struct thread, allelem);
-      int recent_cpu = t->recent_cpu;
-      struct real leftEquation = mul_real_int(leftCoef, recent_cpu);
-      int leftnum = real_round(leftEquation);
-      t->recent_cpu = leftnum + t->nice;
+
+      //int recent_cpu = t->recent_cpu;
+      struct real recent_cpu = t->recent_cpu;
+      //recent_cpu.val = t->recent_cpu;
+
+      //struct real leftEquation = mul_real_int(leftCoef, recent_cpu);
+      struct real leftEquation = mul_real_real(leftCoef, recent_cpu);
+      //int leftnum = real_round(leftEquation);
+      //t->recent_cpu = leftnum + t->nice;
+
+      t->recent_cpu = add_real_int(leftEquation,t->nice);
+      
+
       // printf("%d \n",leftEquation.val);
     }
   }
@@ -524,7 +535,8 @@ void modify_recent_cpu(bool currentOnly, bool isSleeping)
 /* Returns 100 times the current thread's recent_cpu value. */
 int thread_get_recent_cpu(void)
 {
-  return thread_current()->recent_cpu * 100;
+  //return thread_current()->recent_cpu * 100;
+  return real_round(thread_current()->recent_cpu )* 100;
 }
 /* Idle thread.  Executes when no other thread is ready to run.
    The idle thread is initially put on the ready list by
@@ -615,7 +627,9 @@ init_thread(struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *)t + PGSIZE;
   t->base_priority = priority;
   t->priority = priority;
-  t->recent_cpu = 0;
+ // t->recent_cpu = 0;
+  t->recent_cpu = int_to_real(0);
+
   t->nice = 0;
   t->magic = THREAD_MAGIC;
   list_init(&t->locks);

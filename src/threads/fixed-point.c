@@ -6,12 +6,12 @@
 #include <string.h>
 #include "devices/timer.h"
 // ana hna ana hna
-#define SHIFT 10 // 2^14 = 16384
+#define SHIFT 14 // 2^14 = 16384
 
 //convert integer n to fixed point
 struct real int_to_real(int n)
 {
-    n = n << SHIFT;
+     n= n<< SHIFT;
     struct real result;
     result.val = n;
     return result;
@@ -28,7 +28,7 @@ int real_truncate(struct real x)
 int real_round(struct real x)
 {
     int num = x.val;
-    num = num + 512;
+    num = num + 8192;
     int result = num >> SHIFT;
     return result;
 }
@@ -70,12 +70,17 @@ struct real sub_real_int(struct real x, int n)
 // returns real x * real y
 struct real mul_real_real(struct real x, struct real y)
 {
-    struct real result;
+   /* struct real result;
     int num = x.val * y.val;
     struct real num1;
     num1.val = num;
     num = real_truncate(num1);
     result.val = num;
+    return result;*/
+    struct real result;
+    int64_t R=((int64_t)x.val) * y.val;
+    R=R>>SHIFT;
+    result.val=(int)R;
     return result;
 }
 
@@ -90,11 +95,18 @@ struct real mul_real_int(struct real x, int n)
 // returns real x /real y
 struct real div_real_real(struct real x, struct real y)
 {
-       struct real result ;
+      /* struct real result ;
        result.val =(x.val<<SHIFT )/ y.val;
     // struct real result;
     // struct real num1 = int_to_real(x.val);
     // result.val = num1.val / y.val;
+    return result;*/
+    struct real result;
+    int64_t R=((int64_t)x.val)<<SHIFT;
+    R=R/y.val;
+    result.val=(int)R;
+
+    
     return result;
 }
 
