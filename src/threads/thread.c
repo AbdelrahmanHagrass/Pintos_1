@@ -453,7 +453,8 @@ void modify_load_avg(bool isSleeping)
   if (thread_mlfqs)
   {
     int size = list_size(&ready_list);
-    if (!isSleeping)
+    // if (!isSleeping)
+    if(thread_current() != idle_thread)
     {
       size = size + 1;
     }
@@ -469,7 +470,7 @@ void modify_load_avg(bool isSleeping)
     struct real result;
     result.val = result1.val + result2.val;
     load_avg = result.val;
-    printf("%d \n",result.val);
+    //printf("%d \n",result.val);
   }
 }
 
@@ -485,13 +486,14 @@ void modify_recent_cpu(bool currentOnly, bool isSleeping)
 { //recent_cpu = (2*load_avg)/(2*load_avg + 1) * recent_cpu + nice
   if (thread_mlfqs)
   {
-    if (isSleeping)
-    {
-      return;
-    }
+    // if (isSleeping)
+    // {
+    //   return;
+    // }
     int prevRecent = thread_current()->recent_cpu;
-    if (currentOnly)
+    if (currentOnly && thread_current() != idle_thread)
     {
+      //thread_current()->recent_cpu = add_real_int(thread_current()->recent_cpu);
       thread_current()->recent_cpu = thread_current()->recent_cpu + 1;
       return;
     }
