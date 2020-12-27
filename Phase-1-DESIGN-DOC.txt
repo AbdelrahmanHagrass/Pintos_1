@@ -1,0 +1,253 @@
+			+--------------------+
+                        |        CS5600      |
+                        | PROJECT 1: THREADS |
+                        |   DESIGN DOCUMENT  |
+                        +--------------------+
+                                   
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+Ayman Emad Hussien Darwish <>
+Abdelrahman Ibrahim Hagrass <bodyhagrass@gmail.com>
+Abdelrahman Mahmoud Kamal Mahmoud Nour <abdelrahmann271@gmail.com>
+Yoused Raouf Wadie <youssefraouf32@gmail.com>
+
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+*CSCI 350: Pintos Guide - Written by: Stephen Tsung-Han Sher
+
+                             ALARM CLOCK
+                             ===========
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+Added to struct thread:
+ 
+   /* add a new variable to store wakeupTime the thread should wake up at */
+   uint64_t wakeupTime;
+ 
+An ascending order list by wakeupTime used to store threads that are put to 
+sleep "sleeping_List";
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe what happens in a call to timer_sleep(),
+>> including the effects of the timer interrupt handler.
+ 
+In a call to timer_sleep()
+1. The current thread’s sleep_ticks is set to the given sleep ticks plus the 
+current ticks. 
+2. Disable interrupts
+3. The thread is inserted to the sleep list
+4. Block the thread
+5. Reset interrupts level to its old one
+ 
+So, in timer interrupt handler,
+1. Check the list to see if any threads need to be waken up
+2. If any, reset the thread’s sleep_ticks
+3. Disable interrupts
+4. Remove it from the sleep list,
+5. Unblock the thread 
+6. Reset interrupts level to its old one
+
+>> A3: What steps are taken to minimize the amount of time spent in
+>> the timer interrupt handler?
+An ordered list which is sorted and inserted by wakeupTime number is used, 
+so that we can check the list from the beginning and stop whenever the 
+wakeupTime is larger than the current ticks, which guarantees the later 
+threads in the sleep list don’t need to be checked. By this means, we can 
+minimize the time spent. 
+ 
+
+---- SYNCHRONIZATION ----
+
+>> A4: How are race conditions avoided when multiple threads call
+>> timer_sleep() simultaneously?
+List operations happen during interrupt is disabled. 
+
+>> A5: How are race conditions avoided when a timer interrupt occurs
+>> during a call to timer_sleep()?
+The interrupt is disabled.
+
+---- RATIONALE ----
+
+>> A6: Why did you choose this design?  In what ways is it superior to
+>> another design you considered?
+To have a sleep list to store the sleeping threads are the straight forward 
+thought, and following the design of ready_list, things are reasonable and 
+implementable. No other designs are actually been considered, the choice 
+of a sorted list and to insert by order is made to be more efficient and 
+considering as a external static variable, it can only be managed inside 
+the functions we write, we think it’s safe and reasonable too. 
+ 
+
+			 PRIORITY SCHEDULING
+			 ===================
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+thread struct:
+-int base_priority variable is added to store the initial priority thread
+-list locks which is a list storing the locks which this thread holds
+-lock Waiting_lock which is the Lock which the thread wait for
+
+struct lock :
+list_elem is added to be able to add this lock to a list
+and a int Max priority to store the max priority thread waiting for this lock 
+
+>> B2: Explain the data structure used to track priority donation.
+-int base_priority is used to track the initial or the real priority
+-the priority is used to track the priority of the thread at the moment with donations considered
+
+>> Use ASCII art to diagram a nested donation.  (Alternately, submit a
+>> .png file.)
+See nested_donation.png in threads directory
+
+---- ALGORITHMS ----
+
+>> B3: How do you ensure that the highest priority thread waiting for
+>> a lock, semaphore, or condition variable wakes up first?
+
+we sort the lists of the waiting threads in Descending order according to 
+a comparing function
+
+>> B4: Describe the sequence of events when a call to lock_acquire()
+>> causes a priority donation.  How is nested donation handled?
+
+-if the thread requisting the lock isn't the holder so the thread must wait 
+so if the waiting thread priority is greater than the holder update the priority of the holder
+then see if the holder is waiting for another lock and keep updating until you are finished or you counter a larger priority
+-and when the semaphore realses the lock we return the highest priority waiting so updating the lock Max priority to the thread's value
+
+>> B5: Describe the sequence of events when lock_release() is called
+>> on a lock that a higher-priority thread is waiting for.
+- we remove the lock from the locks which the thread holds and update it's priority by choosing the highest Max priority of a lock which 
+this thread holds
+
+
+---- SYNCHRONIZATION ----
+
+>> B6: Describe a potential race in thread_set_priority() and explain
+>> how your implementation avoids it.  Can you use a lock to avoid
+>> this race?
+-Potential race condition:
+If the current thread calls thread_set_priority(), and the thread has a donated priority, the donated priority could be overwritten incorrectly.
+We avoided this race by saving only the highest donated priority and the original priority. The original priority is overwritten in any case but the donated priority is only overwritted when the new priority is higher than the donated priority.
+and by disabling the interrupts while doing this to ensure it's mutal exclusion
+---- RATIONALE ----
+
+>> B7: Why did you choose this design?  In what ways is it superior to
+>> another design you considered?
+-as it was the best according to complexity wise in updating operations and it was the simplest coding wise 
+as there was very hard implementation problems in other designs
+			  ADVANCED SCHEDULER
+			  ==================
+
+---- DATA STRUCTURES ----
+// this struct has inside it integer variable to indicate the real numbers .
+struct real ;
+// this struct was declared in init to initialize the variable in it with 0 at boot time and then to recalculate it every 1 second by saving a real value .
+struct real load_avg ;
+// this struct was declared in threads as it is a thread specific , it is a real value that indicates how much time did the thread spent in the cpu
+// and recalculated every tick or every 1 second (it affects the priority of the thread) .
+struct real recent_cpu;
+// variable initialized in threads and it is a thread specific , it indicates how nice the thread is (it affects the priority of the thread) .
+int nice ;
+
+---- ALGORITHMS ----
+
+>> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
+>> has a recent_cpu value of 0.  Fill in the table below showing the
+>> scheduling decision and the priority and recent_cpu values for each
+>> thread after each given number of timer ticks:
+
+timer  recent_cpu    priority   thread
+ticks   A   B   C   A   B   C   to run
+-----  --  --  --  --  --  --   ------
+ 0      0   0   0  63  61  59     A
+ 4      4   0   0  62  61  59     A
+ 8      8   0   0  61  61  59     A
+12      12  0   0  60  61  59     B
+16      12  4   0  60  60  59     B
+20      12  8   0  60  59  59     B
+24      12  12  0  60  58  59     A
+28      16  12  0  59  58  59     A
+32      20  12  0  58  58  59     C
+36      20  12  4  58  58  58     C
+
+>> C3: Did any ambiguities in the scheduler specification make values
+>> in the table uncertain?  If so, what rule did you use to resolve
+>> them?  Does this match the behavior of your scheduler?
+the order of calculations was somewhat ambigious concerning load_avg , recent_cpu , priority but i calculated them in this order load_avg then recent then priority
+yes , this match the behavior of my scheduler .
+>> C4: How is the way you divided the cost of scheduling between code
+>> inside and outside interrupt context likely to affect performance?
+when interrupt timer is called , i call the functions to modify load_avg , recent_cpu and priorities , where load_avg runs in O(1) ,
+but recent_cpu runs in O(n) and priorities in O(n) where n is the number of threads ,so as the number of threads increase the performance will be affected
+but not by much .
+---- RATIONALE ----
+
+>> C5: Briefly critique your design, pointing out advantages and
+>> disadvantages in your design choices.  If you were to have extra
+>> time to work on this part of the project, how might you choose to
+>> refine or improve your design?
+advantages : it is simple and depends only on calculations .
+disadvantages : -it can affect performance if there are large number of threads as said above .
+                -it depends on fixed-point math which decreases precision of the calculations .
+if i have extra time , i may implement another design of the advanced scheduler by adding Multiple FIFO queues where If the process is completed within 
+the time quantum of the given queue, it leaves the system if not it is preempted and inserted at the end of the next lower level queue.
+ but it would not be as simple as this design but i think it will not depend on fixed-point math neither will affect the performance.
+>> C6: The assignment explains arithmetic for fixed-point math in
+>> detail, but it leaves it open to you to implement it.  Why did you
+>> decide to implement it the way you did?  If you created an
+>> abstraction layer for fixed-point math, that is, an abstract data
+>> type and/or a set of functions or macros to manipulate fixed-point
+>> numbers, why did you do so?  If not, why not?
+I chose this method because it is an optimal method and have no time complexity at all so it doesn't affect the performance although it affects precision but any
+method would . I created an asbtraction layer for fixed-point math to make the code readable (easy to read) and seperate ordinar numbers from real numbers .  
+
+                           SURVEY QUESTIONS
+                           ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the course evaluations at the end of
+the quarter.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+Multiple donation took us most of the time.Other requirements were somehow straightforward.
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+Trying to understand what’s behind thread_create, lock_acquire and lock_release 
+is difficult. But it helped us dig deeper and understand more about how a thread 
+working on a lock and interact with other threads.
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+Actually, we spent some time on what’s multiple donation. All we saw from the 
+manual is one sentence saying that we should implement multiple donation. An 
+example provided would work perfect.
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students, either for future quarters or the remaining projects?
+
+>> Any other comments?
